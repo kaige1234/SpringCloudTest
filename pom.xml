@@ -14,5 +14,4 @@
         <module>ribbon-consumer</module>
         <module>spring-boot-demo</module>
     </modules>
-
 </project>
