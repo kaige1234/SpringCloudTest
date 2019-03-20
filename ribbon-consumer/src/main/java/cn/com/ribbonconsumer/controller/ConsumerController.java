@@ -2,10 +2,17 @@ package cn.com.ribbonconsumer.controller;
 
 import cn.com.ribbonconsumer.bean.User;
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+import com.netflix.hystrix.contrib.javanica.exception.FallbackDefinitionException;
+import com.netflix.hystrix.exception.HystrixBadRequestException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 /**
  * @ClassName ConsumerController
@@ -15,6 +22,7 @@ import org.springframework.web.client.RestTemplate;
  * @Version 1.0
  **/
 @RestController
+@Slf4j
 public class ConsumerController {
 
     @Autowired
@@ -44,17 +52,34 @@ public class ConsumerController {
         System.out.println("这里是熔断器的回调函数");
     }
 
-//----------------------------------------------------------------------------
+//---------------------------------------服务降级的异常处理-------------------------------------
 
 
 
+    @HystrixCommand(fallbackMethod ="getThrowable" )
+    @RequestMapping(value = "/getUserById")
+    public Long getUserById(Long id){
+         restTemplate.getForObject("http://ORDER-SERVER/111",String.class);
+        return 1L;
+    }
 
+    /***
+     *
+     * @param id
+     * @param throwable
+     * @return
+     */
+    public Long getThrowable(Long id,Throwable throwable){
+        System.out.println("现在是调用getThrowable出现了异常:"+throwable.getMessage());
+        return 2L;
+    }
 
+    public Long getId(Long id){
+        System.out.println("现在是调用getId出现了异常");
+        return 2L;
+    }
 
-
-
-
-
+//---------------------------------------------------------------------------------------------------------------
 
 
 
@@ -84,7 +109,7 @@ public class ConsumerController {
     }
 
 
-    //-----------------------验证HystrixCommand的执行------------------------------------
+    //-----------------------验证HystrixCommand的同步执行------------------------------------
 
     @RequestMapping(value = "/checkHystrixCommand")
     public String checkHystrixCommand(){
@@ -95,11 +120,13 @@ public class ConsumerController {
 
 
 
-
-
-
-
-
-
-
+    //-----------------------验证HystrixCommand的异步执行------------------------------------
+    @RequestMapping(value = "/sycHystrixCommand")
+    public String sycHystrixCommand() throws ExecutionException, InterruptedException {
+        Future<String> future = new UserCommand(restTemplate,1L).queue();
+        //用来获取返回的数据；
+        Thread.sleep(5000);
+        future.get();
+        return "dddd";
+    }
 }
